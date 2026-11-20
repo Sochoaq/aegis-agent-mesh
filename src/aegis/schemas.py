@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Literal
+from typing import Any, Dict, List, Literal, Optional
 from pydantic import BaseModel, Field
 
 
@@ -119,12 +119,35 @@ class ToolExecutionResult(BaseModel):
     output: str
 
 
+class EpisodicMemoryHit(BaseModel):
+    trace_id: str
+    incident_id: str
+    service_name: str
+    severity: str
+    cited_runbook: str
+    decision: str
+    similarity_score: float = Field(ge=0.0, le=1.0)
+
+
+class CriticReflection(BaseModel):
+    reflection_triggered: bool
+    initial_rrf_score: float
+    final_rrf_score: float
+    rewritten_query: Optional[str] = None
+    iterations: int = 1
+    episodic_prior_used: bool = False
+    critique_notes: str
+    latency_ms: float
+
+
 class IncidentResolutionTrace(BaseModel):
     trace_id: str
     created_at: str
     incident: IncidentPayload
     telemetry: TelemetryReport
     rag: RAGContext
+    critic: CriticReflection
+    episodic_memory: List[EpisodicMemoryHit] = Field(default_factory=list)
     rca: RCAReport
     governance: GovernanceVerdict
     executions: List[ToolExecutionResult] = Field(default_factory=list)

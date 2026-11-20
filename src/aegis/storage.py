@@ -7,7 +7,7 @@ import sqlite3
 from pathlib import Path
 from typing import List, Optional
 
-from .schemas import IncidentResolutionTrace
+from .schemas import EpisodicMemoryHit, IncidentResolutionTrace
 
 
 class AuditLedger:
@@ -81,6 +81,57 @@ class AuditLedger:
             (trace_id,),
         ).fetchone()
         return IncidentResolutionTrace.model_validate_json(row[0]) if row else None
+
+    def find_similar_incidents(
+        self,
+        service_name: str,
+        metric_name: str,
+        keywords: List[str],
+        exclude_incident_id: str = "",
+        limit: int = 3,
+    ) -> List[EpisodicMemoryHit]:
+        """Retrieve non-blocked historical traces matching service, metric, and keywords."""
+        cursor = self.conn.execute(
+            """
+            SELECT trace_json FROM incident_traces
+            WHERE decision != 'BLOCKED_SECURITY_VIOLATION'
+            ORDER BY created_at DESC LIMIT 100
+            """
+        )
+        kw_set = set(keywords)
+        scored: List[EpisodicMemoryHit] = []
+        for (raw_json,) in cursor.fetchall():
+            trace = IncidentResolutionTrace.model_validate_json(raw_json)
+            if exclude_incident_id and trace.incident.incident_id == exclude_incident_id:
+                continue
+
+            svc_match = 1.0 if trace.incident.service_name == service_name else 0.0
+            met_match = 1.0 if trace.incident.metric_name == metric_name else 0.0
+            hist_kw = set(trace.telemetry.extracted_keywords)
+            union = len(kw_set | hist_kw)
+            jaccard = (len(kw_set & hist_kw) / union) if union > 0 else 0.0
+            sim = round(0.40 * svc_match + 0.30 * met_match + 0.30 * jaccard, 4)
+
+            if sim >= 0.25:
+                cited = (
+                    trace.rca.cited_runbooks[0]
+                    if trace.rca.cited_runbooks
+                    else (trace.rag.hits[0].runbook_id if trace.rag.hits else "")
+                )
+                scored.append(
+                    EpisodicMemoryHit(
+                        trace_id=trace.trace_id,
+                        incident_id=trace.incident.incident_id,
+                        service_name=trace.incident.service_name,
+                        severity=trace.telemetry.severity,
+                        cited_runbook=cited,
+                        decision=trace.governance.decision,
+                        similarity_score=sim,
+                    )
+                )
+
+        scored.sort(key=lambda h: h.similarity_score, reverse=True)
+        return scored[:limit]
 
     def close(self) -> None:
         self.conn.close()

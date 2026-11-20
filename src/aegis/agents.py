@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import os
 import time
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 from pydantic import BaseModel, Field
 
@@ -13,6 +13,8 @@ from .guardrails import verify_tool_policy_and_grounding
 from .rag import DEFAULT_RUNBOOKS, HybridRAGEngine, tokenize
 from .schemas import (
     AnomalySignal,
+    CriticReflection,
+    EpisodicMemoryHit,
     GovernanceVerdict,
     IncidentPayload,
     RAGContext,
@@ -20,6 +22,18 @@ from .schemas import (
     TelemetryReport,
     ToolCallProposal,
 )
+
+QUERY_EXPANSION_MAP: Dict[str, str] = {
+    "slow queries": "postgres postgresql pgbouncer connection pool lock contention idle transaction",
+    "db hang": "postgres hikaricp connection pool exhaustion deadlock sql waiting",
+    "exit 137": "kubernetes k8s pod oomkill oomkilled cgroup memory heap leak container",
+    "killed pod": "kubernetes k8s pod oomkill oomkilled container restart memory",
+    "container killed": "kubernetes k8s pod oomkill oomkilled cgroup memory heap leak",
+    "sensor dropout": "edge gateway ble mqtt packet loss crc telemetry broker",
+    "bad token": "iam jwt auth 401 unauthorized credential stuffing key anomaly",
+    "skewed predictions": "model serving concept drift psi divergence feature skew pytorch",
+    "504 gateway": "api gateway p99 latency timeout 504 upstream worker saturation rps",
+}
 
 
 class TelemetryAnomalyAgent:
@@ -229,6 +243,107 @@ class RootCauseArchitectAgent:
                 )
             ],
             reasoning_mode="deterministic-fallback",
+            latency_ms=elapsed_ms,
+        )
+
+
+class CriticReflectionAgent:
+    """Evaluates retrieval confidence and runs query-rewriting when evidence is weak."""
+
+    def __init__(self, runbooks=None) -> None:
+        self._runbook_map = {rb.runbook_id: rb for rb in (runbooks or DEFAULT_RUNBOOKS)}
+
+    def reflect_and_refine(
+        self,
+        incident: IncidentPayload,
+        telemetry: TelemetryReport,
+        rag_context: RAGContext,
+        rag_agent: RunbookRAGAgent,
+        episodic_hits: List[EpisodicMemoryHit],
+    ) -> Tuple[RAGContext, CriticReflection]:
+        t0 = time.perf_counter()
+        top_hit = rag_context.hits[0]
+        second_hit = rag_context.hits[1] if len(rag_context.hits) > 1 else None
+        rrf_margin = (top_hit.rrf_score - second_hit.rrf_score) if second_hit else top_hit.rrf_score
+
+        weak_retrieval = (
+            top_hit.bm25_score < 12.0
+            or top_hit.cosine_score < 0.22
+            or rrf_margin < 0.00025
+        )
+        episodic_prior_used = len(episodic_hits) > 0
+
+        raw_lower = f"{incident.title} {incident.summary} {' '.join(incident.logs)}".lower()
+        expansions = [
+            canonical
+            for symptom, canonical in QUERY_EXPANSION_MAP.items()
+            if symptom in raw_lower
+        ]
+
+        if not weak_retrieval and not expansions:
+            elapsed_ms = round((time.perf_counter() - t0) * 1000.0, 3)
+            return rag_context, CriticReflection(
+                reflection_triggered=False,
+                initial_rrf_score=top_hit.rrf_score,
+                final_rrf_score=top_hit.rrf_score,
+                rewritten_query=None,
+                iterations=1,
+                episodic_prior_used=episodic_prior_used,
+                critique_notes=(
+                    f"Initial RAG confidence sufficient (BM25={top_hit.bm25_score:.2f}, "
+                    f"Cosine={top_hit.cosine_score:.3f}, RRF margin={rrf_margin:.5f})."
+                ),
+                latency_ms=elapsed_ms,
+            )
+
+        prior_terms: List[str] = []
+        if episodic_prior_used:
+            best_rb = self._runbook_map.get(episodic_hits[0].cited_runbook)
+            if best_rb is not None:
+                prior_terms.extend(best_rb.keywords[:6])
+
+        rewritten_query = " ".join(
+            part
+            for part in (
+                rag_context.query,
+                " ".join(expansions),
+                " ".join(prior_terms),
+            )
+            if part
+        ).strip()
+
+        refined_hits = rag_agent.engine.search(rewritten_query, top_k=len(rag_context.hits))
+        refined_top = refined_hits[0]
+        improved = (
+            refined_top.bm25_score > top_hit.bm25_score
+            or refined_top.cosine_score > top_hit.cosine_score
+            or refined_top.rrf_score >= top_hit.rrf_score
+        )
+
+        final_context = (
+            RAGContext(
+                query=rewritten_query,
+                hits=refined_hits,
+                latency_ms=rag_context.latency_ms,
+            )
+            if improved
+            else rag_context
+        )
+        final_rrf = final_context.hits[0].rrf_score
+        elapsed_ms = round((time.perf_counter() - t0) * 1000.0, 3)
+
+        return final_context, CriticReflection(
+            reflection_triggered=True,
+            initial_rrf_score=top_hit.rrf_score,
+            final_rrf_score=final_rrf,
+            rewritten_query=rewritten_query,
+            iterations=2,
+            episodic_prior_used=episodic_prior_used,
+            critique_notes=(
+                f"Low initial grounding/symptom ambiguity detected "
+                f"(BM25={top_hit.bm25_score:.2f}, Cosine={top_hit.cosine_score:.3f}); "
+                f"re-queried with domain expansion and selected '{final_context.hits[0].runbook_id}'."
+            ),
             latency_ms=elapsed_ms,
         )
 

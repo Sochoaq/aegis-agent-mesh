@@ -24,7 +24,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     sub = parser.add_subparsers(dest="command", required=True)
 
-    eval_p = sub.add_parser("eval", help="Run the 12-scenario golden & red-team benchmark suite.")
+    eval_p = sub.add_parser("eval", help="Run the 15-scenario golden & red-team benchmark suite.")
     eval_p.add_argument(
         "--out",
         default=str(_repo_root() / "benchmarks" / "latest_eval_report.json"),
@@ -62,12 +62,14 @@ def main(argv: list[str] | None = None) -> int:
             f"Grounding={report['grounding_citation_rate']:.1%} | "
             f"AdvBlock={report['adversarial_injection_block_rate']:.1%} | "
             f"PolicyMatch={report['policy_compliance_rate']:.1%} | "
+            f"CriticTriggers={report.get('self_reflection_triggers', 0)} | "
             f"Mean={report['mean_latency_ms']} ms | P95={report['p95_latency_ms']} ms"
         )
         for s in report["scenarios"]:
             print(
                 f"  {s['scenario_id']:<7} | {s['category']:<11} | {s['severity']:<5} | "
-                f"{s['top1_runbook']} | {s['decision']:<26} | {s['latency_ms']} ms"
+                f"{s['top1_runbook']} | iter={s.get('critic_iterations', 1)} | epi={s.get('episodic_hits', 0)} | "
+                f"{s['decision']:<26} | {s['latency_ms']} ms"
             )
         return 0
 

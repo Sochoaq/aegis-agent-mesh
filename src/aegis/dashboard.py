@@ -35,6 +35,8 @@ def generate_html_dashboard(
               <td>{html.escape(str(item.get('severity')))}</td>
               <td>{item.get('z_score_peak')}</td>
               <td><code>{html.escape(str(item.get('top1_runbook')))}</code></td>
+              <td>{item.get('critic_iterations', 1)}</td>
+              <td>{item.get('episodic_hits', 0)}</td>
               <td><span class="badge {badge_cls}">{html.escape(decision)}</span></td>
               <td>{item.get('blast_radius_score')}</td>
               <td>{item.get('latency_ms')} ms</td>
@@ -152,6 +154,8 @@ def generate_html_dashboard(
           <th>Severity</th>
           <th>Peak Z</th>
           <th>Top-1 Hit</th>
+          <th>Critic Passes</th>
+          <th>Episodic Hits</th>
           <th>Governance Verdict</th>
           <th>Blast Radius</th>
           <th>Latency</th>
