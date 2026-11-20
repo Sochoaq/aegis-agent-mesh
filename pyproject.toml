@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aegis-agent-mesh"
+version = "0.1.0"
+description = "Autonomous multi-agent incident triage, hybrid RRF-RAG, sandboxed tool-calling, and deterministic LLMOps guardrail engine."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+authors = [
+  { name = "Santiago Alejandro Ochoa Quesada" }
+]
+dependencies = [
+  "pydantic>=2.0.0",
+]
+
+[project.optional-dependencies]
+llm = [
+  "google-genai>=1.0.0",
+]
+
+[project.scripts]
+aegis = "aegis.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

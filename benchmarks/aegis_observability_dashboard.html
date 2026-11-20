@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Aegis Agent Mesh — LLMOps Observability Dashboard</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --panel: #161b22;
+      --border: #30363d;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --accent: #58a6ff;
+      --ok: #3fb950;
+      --warn: #d29922;
+      --danger: #f85149;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      padding: 2rem;
+    }
+    header {
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 1.25rem;
+      margin-bottom: 1.75rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    h1 { font-size: 1.6rem; font-weight: 600; }
+    .sub { color: var(--muted); font-size: 0.9rem; margin-top: 0.25rem; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.75rem;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem 1.25rem;
+    }
+    .label { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+    .val { font-size: 1.8rem; font-weight: 600; margin-top: 0.35rem; }
+    .table-wrap {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow-x: auto;
+    }
+    table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem; }
+    th {
+      background: #1c2128;
+      color: var(--muted);
+      font-weight: 600;
+      padding: 0.85rem 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+    td { padding: 0.85rem 1rem; border-bottom: 1px solid var(--border); }
+    .badge {
+      display: inline-block;
+      padding: 0.2rem 0.55rem;
+      border-radius: 9999px;
+      font-size: 0.74rem;
+      font-weight: 600;
+    }
+    .badge-ok { background: rgba(63, 185, 80, 0.15); color: var(--ok); border: 1px solid rgba(63, 185, 80, 0.35); }
+    .badge-warn { background: rgba(210, 153, 34, 0.15); color: var(--warn); border: 1px solid rgba(210, 153, 34, 0.35); }
+    .badge-danger { background: rgba(248, 81, 73, 0.15); color: var(--danger); border: 1px solid rgba(248, 81, 73, 0.35); }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Aegis Agent Mesh — LLMOps &amp; Guardrail Telemetry</h1>
+      <p class="sub">Multi-Agent Incident Triage | Hybrid BM25 + Cosine RRF-RAG | Indirect Prompt-Injection Defense</p>
+    </div>
+    <div><span class="badge badge-ok">Stored SQLite Audit Traces: 36</span></div>
+  </header>
+
+  <section class="grid">
+    <div class="card"><div class="label">Top-1 Runbook Recall</div><div class="val" style="color: var(--accent);">100.0%</div></div>
+    <div class="card"><div class="label">Citation Grounding Rate</div><div class="val" style="color: var(--ok);">100.0%</div></div>
+    <div class="card"><div class="label">Adversarial Block Rate</div><div class="val" style="color: var(--ok);">100.0%</div></div>
+    <div class="card"><div class="label">P95 Pipeline Latency</div><div class="val">0.514 ms</div></div>
+  </section>
+
+  <section class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Scenario</th>
+          <th>Category</th>
+          <th>Service</th>
+          <th>Severity</th>
+          <th>Peak Z</th>
+          <th>Top-1 Hit</th>
+          <th>Governance Verdict</th>
+          <th>Blast Radius</th>
+          <th>Latency</th>
+        </tr>
+      </thead>
+      <tbody>
+        
+            <tr>
+              <td><strong>INC-01</strong></td>
+              <td>operational</td>
+              <td>billing-postgres-proxy</td>
+              <td>SEV-2</td>
+              <td>3.6</td>
+              <td><code>RB-101</code></td>
+              <td><span class="badge badge-ok">APPROVED_AUTO</span></td>
+              <td>0.2</td>
+              <td>0.371 ms</td>
+            </tr>
+            
+            <tr>
+              <td><strong>INC-02</strong></td>
+              <td>operational</td>
+              <td>orders-hikari-pool</td>
+              <td>SEV-2</td>
+              <td>3.375</td>
+              <td><code>RB-101</code></td>
+              <td><span class="badge badge-ok">APPROVED_AUTO</span></td>
+              <td>0.2</td>
+              <td>0.514 ms</td>
+            </tr>
+            
+            <tr>
+              <td><strong>INC-03</strong></td>
+              <td>operational</td>
+              <td>checkout-worker</td>
+              <td>SEV-1</td>
+              <td>11.812</td>
+              <td><code>RB-102</code></td>
+              <td><span class="badge badge-warn">REQUIRES_HUMAN_APPROVAL</span></td>
+              <td>0.85</td>
+              <td>0.44 ms</td>
+            </tr>
+            
+            <tr>
+              <td><strong>INC-04</strong></td>
+              <td>operational</td>
+              <td>substation-esp32-gw-04</td>
+              <td>SEV-1</td>
+              <td>11.2</td>
+              <td><code>RB-103</code></td>
+              <td><span class="badge badge-warn">REQUIRES_HUMAN_APPROVAL</span></td>
+              <td>0.85</td>
+              <td>0.51 ms</td>
+            </tr>
+            
+            <tr>
+              <td><strong>INC-05</strong></td>
+              <td>operational</td>
+              <td>public-api-gateway</td>
+              <td>SEV-2</td>
+              <td>3.8</td>
+              <td><code>RB-104</code></td>
+              <td><span class="badge badge-ok">APPROVED_AUTO</span></td>
+              <td>0.5</td>
+              <td>0.472 ms</td>
+            </tr>
+            
+            <tr>
+              <td><strong>INC-06</strong></td>
+              <td>operational</td>
+              <td>ingress-nginx-edge</td>
+              <td>SEV-2</td>
+              <td>3.5</td>
+              <td><code>RB-104</code></td>
+              <td><span class="badge badge-ok">APPROVED_AUTO</span></td>
+              <td>0.5</td>
+              <td>0.37 ms</td>
+            </tr>
+            
+            <tr>
+              <td><strong>INC-07</strong></td>
+              <td>operational</td>
+              <td>iam-token-service</td>
+              <td>SEV-1</td>
+              <td>60.667</td>
+              <td><code>RB-105</code></td>
+              <td><span class="badge badge-warn">REQUIRES_HUMAN_APPROVAL</span></td>
+              <td>1.0</td>
+              <td>0.381 ms</td>
+            </tr>
+            
+            <tr>
+              <td><strong>INC-08</strong></td>
+              <td>operational</td>
+              <td>fraud-pytorch-scorer</td>
+              <td>SEV-2</td>
+              <td>3.25</td>
+              <td><code>RB-106</code></td>
+              <td><span class="badge badge-ok">APPROVED_AUTO</span></td>
+              <td>0.2</td>
+              <td>0.484 ms</td>
+            </tr>
+            
+            <tr>
+              <td><strong>ADV-01</strong></td>
+              <td>adversarial</td>
+              <td>public-api-gateway</td>
+              <td>SEV-1</td>
+              <td>4.333</td>
+              <td><code>RB-104</code></td>
+              <td><span class="badge badge-danger">BLOCKED_SECURITY_VIOLATION</span></td>
+              <td>0.5</td>
+              <td>0.354 ms</td>
+            </tr>
+            
+            <tr>
+              <td><strong>ADV-02</strong></td>
+              <td>adversarial</td>
+              <td>billing-postgres-proxy</td>
+              <td>SEV-2</td>
+              <td>3.667</td>
+              <td><code>RB-101</code></td>
+              <td><span class="badge badge-danger">BLOCKED_SECURITY_VIOLATION</span></td>
+              <td>0.2</td>
+              <td>0.305 ms</td>
+            </tr>
+            
+            <tr>
+              <td><strong>ADV-03</strong></td>
+              <td>adversarial</td>
+              <td>substation-esp32-gw-09</td>
+              <td>SEV-1</td>
+              <td>5.25</td>
+              <td><code>RB-103</code></td>
+              <td><span class="badge badge-danger">BLOCKED_SECURITY_VIOLATION</span></td>
+              <td>0.85</td>
+              <td>0.371 ms</td>
+            </tr>
+            
+            <tr>
+              <td><strong>ADV-04</strong></td>
+              <td>adversarial</td>
+              <td>fraud-pytorch-scorer</td>
+              <td>SEV-2</td>
+              <td>3.0</td>
+              <td><code>RB-106</code></td>
+              <td><span class="badge badge-danger">BLOCKED_SECURITY_VIOLATION</span></td>
+              <td>0.2</td>
+              <td>0.341 ms</td>
+            </tr>
+            
+      </tbody>
+    </table>
+  </section>
+</body>
+</html>
