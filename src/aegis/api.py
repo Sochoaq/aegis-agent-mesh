@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -299,9 +300,16 @@ def run_server(
     db_path: Optional[Path] = None,
 ) -> None:
     root = Path(__file__).resolve().parents[2]
-    ledger = AuditLedger(db_path or (root / "aegis_audit.db"))
+    resolved_db = Path(db_path) if db_path is not None else Path(
+        os.environ.get("AEGIS_DB_PATH", str(root / "aegis_audit.db"))
+    )
+    resolved_db.parent.mkdir(parents=True, exist_ok=True)
+    report_path = Path(
+        os.environ.get("AEGIS_REPORT_PATH", str(root / "benchmarks" / "latest_eval_report.json"))
+    )
+    ledger = AuditLedger(resolved_db)
     orch = AegisOrchestrator(ledger=ledger)
-    handler = create_handler(orch, root / "benchmarks" / "latest_eval_report.json")
+    handler = create_handler(orch, report_path)
     server = ThreadingHTTPServer((host, port), handler)
     print(f"Aegis API & Web Console listening on http://{host}:{port}")
     try:

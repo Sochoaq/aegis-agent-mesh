@@ -28,7 +28,40 @@ jobs:
           PYTHONPATH: src
         run: python -m unittest discover -s tests -v
 
-      - name: Run 12-scenario golden & red-team benchmark
+      - name: Run 15-scenario golden & red-team benchmark
         env:
           PYTHONPATH: src
         run: python -m aegis.cli eval
+
+  docker-verify:
+    name: Multi-Stage Docker Build & Hardened Container Verification
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate compose schema
+        run: docker compose config --quiet
+
+      - name: Build multi-stage runtime image
+        run: docker build -t aegis-agent-mesh:ci .
+
+      - name: Verify non-root UID & containerized 15-scenario benchmark
+        run: |
+          test "$(docker run --rm --entrypoint id aegis-agent-mesh:ci -u)" = "10001"
+          docker run --rm --read-only --tmpfs /tmp aegis-agent-mesh:ci \
+            python -m aegis.cli eval --db /tmp/eval.db --out /tmp/eval.json
+
+      - name: Verify hardened read-only HTTP API & Web Console container
+        run: |
+          mkdir -p /tmp/aegis-ci-data && chmod 777 /tmp/aegis-ci-data
+          docker run -d --name aegis-ci \
+            -p 18080:8080 \
+            --read-only \
+            --tmpfs /tmp \
+            -v /tmp/aegis-ci-data:/app/data \
+            aegis-agent-mesh:ci
+          sleep 2
+          curl -fsS http://127.0.0.1:18080/health
+          curl -fsS http://127.0.0.1:18080/openapi.json | head -n 5
+          docker rm -f aegis-ci

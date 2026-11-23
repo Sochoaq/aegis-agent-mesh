@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from pathlib import Path
 
 from .api import run_server
@@ -17,6 +18,14 @@ def _repo_root() -> Path:
     return Path(__file__).resolve().parents[2]
 
 
+def _default_db_path() -> str:
+    return os.environ.get("AEGIS_DB_PATH") or str(_repo_root() / "aegis_audit.db")
+
+
+def _default_report_path() -> str:
+    return os.environ.get("AEGIS_REPORT_PATH") or str(_repo_root() / "benchmarks" / "latest_eval_report.json")
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="aegis",
@@ -27,12 +36,12 @@ def main(argv: list[str] | None = None) -> int:
     eval_p = sub.add_parser("eval", help="Run the 15-scenario golden & red-team benchmark suite.")
     eval_p.add_argument(
         "--out",
-        default=str(_repo_root() / "benchmarks" / "latest_eval_report.json"),
+        default=_default_report_path(),
         help="Path to write JSON benchmark report.",
     )
     eval_p.add_argument(
         "--db",
-        default=str(_repo_root() / "aegis_audit.db"),
+        default=_default_db_path(),
         help="Path to SQLite audit ledger.",
     )
 
@@ -45,16 +54,30 @@ def main(argv: list[str] | None = None) -> int:
         "--out",
         default=str(_repo_root() / "benchmarks" / "aegis_observability_dashboard.html"),
     )
+    dash_p.add_argument(
+        "--db",
+        default=_default_db_path(),
+        help="Path to SQLite audit ledger.",
+    )
 
     serve_p = sub.add_parser("serve", help="Start the local HTTP JSON API server.")
     serve_p.add_argument("--host", default="127.0.0.1")
     serve_p.add_argument("--port", type=int, default=8080)
+    serve_p.add_argument(
+        "--db",
+        default=_default_db_path(),
+        help="Path to SQLite audit ledger.",
+    )
 
     args = parser.parse_args(argv)
 
     if args.command == "eval":
-        ledger = AuditLedger(args.db)
-        report = run_benchmark(output_path=Path(args.out), ledger=ledger)
+        db_file = Path(args.db)
+        db_file.parent.mkdir(parents=True, exist_ok=True)
+        out_file = Path(args.out)
+        out_file.parent.mkdir(parents=True, exist_ok=True)
+        ledger = AuditLedger(db_file)
+        report = run_benchmark(output_path=out_file, ledger=ledger)
         ledger.close()
         print(
             f"Aegis Benchmark Complete | Scenarios={report['total_scenarios']} | "
@@ -85,9 +108,10 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.command == "dashboard":
-        db_path = _repo_root() / "aegis_audit.db"
+        db_path = Path(args.db)
+        db_path.parent.mkdir(parents=True, exist_ok=True)
         ledger = AuditLedger(db_path)
-        report_path = _repo_root() / "benchmarks" / "latest_eval_report.json"
+        report_path = Path(_default_report_path())
         if report_path.exists():
             eval_report = json.loads(report_path.read_text(encoding="utf-8"))
         else:
@@ -99,7 +123,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.command == "serve":
-        run_server(host=args.host, port=args.port)
+        run_server(host=args.host, port=args.port, db_path=Path(args.db))
         return 0
 
     return 1

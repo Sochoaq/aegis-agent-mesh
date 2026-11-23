@@ -1,0 +1,21 @@
+# ==============================================================================
+# .dockerignore - Aegis Agent Mesh
+# Keeps build context minimal and excludes local databases, secrets & caches
+# ==============================================================================
+.git/
+.github/
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.vscode/
+.env
+.env.*
+*.db
+*.db-wal
+*.db-shm
+benchmarks/aegis_observability_dashboard.html

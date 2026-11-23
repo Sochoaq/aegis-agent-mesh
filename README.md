@@ -89,11 +89,16 @@ pip install -e ".[llm]"
 export GEMINI_API_KEY="your-gemini-api-key"
 ```
 
-### Container Installation (Docker)
+### Container Installation (Docker & Docker Compose)
 
 ```bash
+# Start hardened API & Web Console container (non-root UID 10001, read-only rootfs, persistent volume)
+docker compose up --build
+
+# Or run the 15-scenario golden & red-team benchmark inside an ephemeral container
 docker build -t aegis-agent-mesh .
-docker run --rm aegis-agent-mesh
+docker run --rm --read-only --tmpfs /tmp aegis-agent-mesh \
+  python -m aegis.cli eval --db /tmp/eval.db --out /tmp/eval.json
 ```
 
 ---
